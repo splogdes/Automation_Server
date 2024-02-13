@@ -35,14 +35,17 @@ class client_handler:
                 self.sock.sendto('register_device'.encode(), addr)
                 return
             
-        if data['message_type'] == 'register_sensor':
-             self.data_base.register_sensor(data, addr)
-            
-        elif data['message_type'] == 'sensor_data':
-            self.data_base.new_sensor_data(data, addr)
+        match data['message_type']:
 
-        elif data['message_type'] == 'register_device':
-            self.data_base.update_device(data, addr)
+            case 'register_sensor':
+                self.data_base.register_sensor(data, addr)
 
-        else:
-            print("Message Not Recougnised")
+            case 'sensor_data':
+                self.data_base.new_sensor_data(data, addr)
+
+            case 'register_device':
+                self.data_base.update_device(data, addr)
+
+            case _:
+                print("Message Not Recougnised")
+                self.sock.sendto('Message Not Recougnised'.encode(), addr)

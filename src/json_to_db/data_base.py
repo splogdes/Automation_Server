@@ -1,6 +1,5 @@
 import sqlite3
 
-
 class DataBase:
     '''This class is used to interact with the database'''
 
