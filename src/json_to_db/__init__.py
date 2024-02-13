@@ -1,0 +1,1 @@
+from json_to_db.json_to_db import json_to_db as jdb

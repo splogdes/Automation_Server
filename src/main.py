@@ -1,8 +1,8 @@
-import udp_server
-
+from udp_server import client_handler
 
 def main():
-    server = udp_server.UDPServer()
+    
+    server = client_handler()
 
     server.run()
 
