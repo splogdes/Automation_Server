@@ -22,7 +22,7 @@ class json_to_db:
     def register_sensor(self, data, addr):
         '''Registers the sensor in the database'''
         if not self.__data_base.is_sensor_registered(data['mac'], data['name']):
-            self.__data_base.insert_sensor(data['mac'], data['name'], data['type'], data['model'])
+            self.__data_base.insert_sensor(data['mac'], data['name'], data['model'])
             self.sock.sendto(("registerd sensor:" + data['name']).encode(), addr)
 
     def update_device(self, data, addr):
@@ -32,12 +32,13 @@ class json_to_db:
 
     def new_sensor_data(self, data, addr):
         '''Inserts the sensor data into the database'''
+        
         for sensor in data['sensors']:
             if not self.__data_base.is_sensor_registered(data['mac'], sensor):
                 self.sock.sendto(sensor.encode(), addr)
-            else:
-                self.__data_base.insert_message(data['mac'], data['sensors'])
-                self.sock.sendto(("sensor data received " + sensor).encode(), addr)
+
+        self.__data_base.insert_message(data['mac'], data['sensors'])
+        self.sock.sendto(("sensor data received " + sensor).encode(), addr)
 
 
     
