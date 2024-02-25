@@ -24,6 +24,7 @@ class client_handler:
 					
 			except json.JSONDecodeError as e:
 				print("Error Decoding JSON", e)
+				self.sock.sendto('Error Decoding JSON'.encode(), addr)
 
 		
 	def process_request(self, data, addr):

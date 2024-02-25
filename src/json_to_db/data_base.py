@@ -115,9 +115,9 @@ class DataBase:
   
 	def get_data(self, mac_address, sname, mode):
 		self.cursor.execute('''
-							SELECT value, timestamp FROM DATA
-							NAURAL JOIN MESSAGES
-       						WHERE mac_address = ? AND sname = ? AND type = ? ORDER BY timestamp DESC LIMIT 60''',
+							SELECT value, timestamp
+                            FROM DATA NATURAL JOIN MESSAGES
+       						WHERE mac_address = ? AND sname = ? AND type = ? ORDER BY timestamp DESC''',
 							(mac_address, sname, mode)
 							)
 		return self.cursor.fetchall()

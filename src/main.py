@@ -9,15 +9,15 @@ def server():
  
 def main():
     db = DataBase()
-    data = db.get_data('8C:AA:B5:15:F8:E8', 'room monitor', 'temperature')
-
-    x = [datetime.strptime(x[1], '%Y-%m-%d %H:%M:%S').strftime('%H:%M:%S') for x in data]
+    data = db.get_data('5C:CF:7F:02:59:0E', 'room monitor', 'temperature')
+    print(data)
+    x = [datetime.strptime(x[1], '%Y-%m-%d %H:%M:%S') for x in data]
     y = [x[0] for x in data]
-    print(x)
-    plt.plot(y)
+    plt.plot(x, y)
     plt.show()
 	
 	
 
 if __name__ == "__main__":
-	main()
+    main()
+	# server()
