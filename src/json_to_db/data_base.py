@@ -113,12 +113,13 @@ class DataBase:
 							)
 		self.conn.commit()
   
-	def get_data(self, mac_address, sname, mode):
+	def get_data(self, mac_address, sname, mode, duration = 60):
 		self.cursor.execute('''
 							SELECT value, timestamp
                             FROM DATA NATURAL JOIN MESSAGES
-       						WHERE mac_address = ? AND sname = ? AND type = ? ORDER BY timestamp DESC''',
-							(mac_address, sname, mode)
+       						WHERE mac_address = ? AND sname = ? AND type = ? AND timestamp > datetime('now', '-? minutes')
+                            ORDER BY timestamp''',
+                            (mac_address, sname, mode, duration)
 							)
 		return self.cursor.fetchall()
 

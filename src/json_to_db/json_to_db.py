@@ -41,5 +41,7 @@ class json_to_db:
         for sensor in data['sensors']:
             self.sock.sendto(("sensor data received " + sensor).encode(), addr)
 
-
-    
+    def check_integrity(self, data):
+        '''Checks the integrity of the data'''
+        keys = ['mac', 'message_type']
+        return all(key in data for key in keys)
