@@ -9,7 +9,7 @@ def server():
 	udp_server.run()
  
 def get_data(sname, type, db):
-    data = db.get_data('5C:CF:7F:02:59:0E', sname, type)
+    data = db.get_data('5C:CF:7F:02:59:0E', sname, type, 4)
     x = [datetime.strptime(x[1], '%Y-%m-%d %H:%M:%S') for x in data]
     y = [x[0] for x in data]
     return x,y
