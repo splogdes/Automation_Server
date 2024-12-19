@@ -9,12 +9,11 @@ from kivy_garden.matplotlib import FigureCanvasKivyAgg
 from kivy.clock import Clock
 from kivy.uix.slider import Slider
 from kivy.core.window import Window
-from matplotlib.figure import Figure
+from kivy.input.providers.mtdev import MTDMotionEvent
+import matplotlib.pyplot as plt
 from functools import partial
 from datetime import datetime
 from json_to_db import DataBase
-from udp_server import client_handler
-import sys
 
 def get_data(device, sname, type, db, duration=4):
     data = db.get_data(device, sname, type, duration)
@@ -23,6 +22,7 @@ def get_data(device, sname, type, db, duration=4):
     return x, y
 
 class SensorApp(App):
+    
     def build(self):
         self.db = DataBase()
 
@@ -31,25 +31,48 @@ class SensorApp(App):
 
         # Graph container
         self.graph_container = BoxLayout(orientation='vertical')
-        self.graph_container.bind(on_touch_down=self.handle_click)
+        self.graph_container.bind(on_touch_down=self.on_touch_down)
         self.main_layout.add_widget(self.graph_container)
+        
+        self.double_tap_detected = False
 
         return self.main_layout
     
-    def handle_click(self, instance, touch):
-        """Handle left-click to add a graph."""
-        if touch.button == 'left' and self.graph_container.collide_point(*touch.pos):
-            # Open the graph configuration popup
+    def on_touch_down(self, instance, touch):
+        
+        if type(touch) != MTDMotionEvent:
+            return False
+        
+        if touch.is_double_tap:
+            self.double_tap_detected = True
+            # Cancel any pending single tap callbacks
+            Clock.unschedule(self.handle_single_tap)
+            self.handle_double_tap(instance, touch)
+        else:
+            self.double_tap_detected = False
+            # Schedule single tap handling
+            Clock.schedule_once(lambda dt: self.handle_single_tap(instance, touch), 0.3)
+
+    def handle_single_tap(self, instance, touch):
+        if not self.double_tap_detected:
             self.open_add_graph_popup(None)
-            
-        if touch.button == 'right' and self.graph_container.collide_point(*touch.pos):
-            # Remove the last graph
-            self.graph_container.remove_widget(self.graph_container.children[-1])
+
+    def handle_double_tap(self, instance, touch):
+        # Find the graph widget under the touch position
+        for widget in self.graph_container.children:
+            if widget.collide_point(*touch.pos):
+                self.graph_container.remove_widget(widget)
+
+    def handle_click_popup(self, instance, touch):
+        """Handle clicks on the popup."""
+        if type(touch) == MTDMotionEvent:
+            return False
+        return True
 
     def open_add_graph_popup(self, _):
         """Open a popup to configure a new graph."""
         content = GridLayout(cols=2, spacing=10, padding=10)
-
+        content.bind(on_touch_down=self.handle_click_popup)
         # Dropdown for selecting device
         content.add_widget(Label(text="Device:"))
         device_spinner = Spinner(
@@ -69,9 +92,16 @@ class SensorApp(App):
         content.add_widget(mode_spinner)
 
         # Slider for selecting duration
-        content.add_widget(Label(text="Duration (hours):"))
-        duration_slider = Slider(min=1, max=40000, value=30000, step=10000)
+        duration_slider = Slider(min=1, max=240, value=12, step=1)
+        duration_label = Label(text=f"Duration (hours): {int(duration_slider.value)}")
+        content.add_widget(duration_label)
         content.add_widget(duration_slider)
+
+        # Update the label when the slider value changes
+        def update_duration_label(instance, value):
+            duration_label.text = f"Duration (hours): {int(value)}"
+
+        duration_slider.bind(value=update_duration_label)
 
         # Update the sensors dynamically based on the selected device
         def update_sensors(_, value):
@@ -106,15 +136,20 @@ class SensorApp(App):
         popup = Popup(title="Add New Graph", content=popup_content, size_hint=(0.8, 0.6))
 
         # Button bindings
-        add_btn.bind(
-            on_press=lambda _: self.add_graph(
-                device_spinner.text,
-                sensor_spinner.text,
-                mode_spinner.text,
-                duration_slider.value,
-                popup,
-            )
-        )
+        self.add_graph_called = False
+        def on_add_btn_press(_):
+            if not self.add_graph_called:
+                self.add_graph_called = True
+                self.add_graph(
+                    device_spinner.text,
+                    sensor_spinner.text,
+                    mode_spinner.text,
+                    duration_slider.value,
+                    popup,
+                )
+
+        add_btn.bind(on_press=on_add_btn_press)
+
         cancel_btn.bind(on_press=popup.dismiss)
 
         popup.open()
@@ -133,42 +168,34 @@ class SensorApp(App):
         popup.dismiss()
 
         # Create new graph figure
-        fig, axs, lines = self.setup_figure([sensor], f"{device} - {sensor} ({mode})")
+        plt.style.use('dark_background')
+        fig, axs = plt.subplots()
+        axs.set_title(f"{device} ({mode})")
+        axs.set_xlabel("Time")
+        axs.set_ylabel("Value")
+        fig.tight_layout()
+        
+        # Create a line for the graph
+        line = axs.plot([], [], label=sensor)
 
         # Add to the graph container
         self.graph_container.add_widget(FigureCanvasKivyAgg(fig))
 
+        self.update_graph(axs, line, sensor, device, mode, duration, 1)
+        
         # Schedule updates for the new graph
         Clock.schedule_interval(
-            partial(self.update_graph, axs, lines, [sensor], device, mode, duration), 1
+            partial(self.update_graph, axs, line, sensor, device, mode, duration), 1
         )
         
-        self.update_graph(axs, lines, [sensor], device, mode, duration, 1)
 
-    def setup_figure(self, sensors, title):
-        """Set up a matplotlib figure with subplots for a list of sensors."""
-        fig = Figure()
-        axes = []
-        lines = []
-
-        for sensor in sensors:
-            ax = fig.add_subplot(len(sensors), 1, len(axes) + 1)
-            ax.set_title(sensor)
-            axes.append(ax)
-            lines.append(ax.plot([], [])[0])  # Initialize an empty line
-
-        fig.suptitle(title)
-        return fig, axes, lines
-
-    def update_graph(self, axs, lines, sensors, device, mode, duration, _):
+    def update_graph(self, axs, line, sensor, device, mode, duration, _):
         """Update a graph with new data."""
-        for i, sensor in enumerate(sensors):
-            x, y = get_data(device, sensor, mode, self.db, duration)
-            lines[i].set_xdata(x)
-            lines[i].set_ydata(y)
-            axs[i].relim()
-            axs[i].autoscale_view()
-            axs[i].figure.canvas.draw()
+        x, y = get_data(device, sensor, mode, self.db, duration)
+        line[0].set_data(x, y)
+        axs.relim()
+        axs.autoscale_view()  # Ensure the data fits well within the plot
+        axs.figure.canvas.draw()
 
     def show_error_popup(self, message):
         """Show an error popup."""
@@ -177,4 +204,6 @@ class SensorApp(App):
 
 if __name__ == "__main__":
     Window.fullscreen = True
+    Window.show_cursor = False
+    Window.size = (1920, 1080)
     SensorApp().run()
