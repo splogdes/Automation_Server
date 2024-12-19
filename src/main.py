@@ -181,6 +181,8 @@ class SensorApp(App):
         axs.set_xlabel("Time")
         axs.set_ylabel(f"{mode} ({unit})")
         axs.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        axs.xaxis.grid(False)
+        axs.yaxis.grid(True, color='grey')
         fig.autofmt_xdate()
         fig.tight_layout()
         

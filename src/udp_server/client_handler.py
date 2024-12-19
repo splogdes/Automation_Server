@@ -16,8 +16,7 @@ class client_handler:
 
         while True:
             data, addr = self.sock.recvfrom(1024)
-            print("received message:", data.decode(), "from", addr)
-
+            
             try:
                 json_data = json.loads(data.decode())
                 self.process_request(json_data, addr)
