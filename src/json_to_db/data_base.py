@@ -28,7 +28,6 @@ class DataBase:
 						model VARCHAR(50),
 						PRIMARY KEY(mac_address, sname),
 						FOREIGN KEY(mac_address) REFERENCES DEVICES(mac_address)
-                        FOREIGN KEY(model) REFERENCES SMODES(model)
 					)''')
 
 
@@ -56,18 +55,20 @@ class DataBase:
 					SMODES(
 						model VARCHAR(50),
 						mode VARCHAR(50),
+						unit VARCHAR(50),
 						PRIMARY KEY(model, mode),
 						FOREIGN KEY(model) REFERENCES SENSORS(model)
 					)''')
 
 		self.conn.commit()
 
-	def insert_sensor_modes(self, model, modes):
+	def insert_sensor_modes(self, model, mode, unit):
 		'''Inserts the sensor modes into the database if they do not exist'''
-		if not self.cursor.execute('''SELECT * FROM SMODES WHERE model = ?''', (model,)).fetchone():
-			for mode in modes:
-				self.cursor.execute('''INSERT INTO SMODES(model, mode) VALUES(?,?)''', (model, mode))
-				self.conn.commit()
+		self.cursor.execute(
+			'''INSERT INTO SMODES(model, mode, unit) VALUES(?,?,?)''',
+			(model, mode, unit)
+			)
+		self.conn.commit()
 
 	def insert_device(self, mac_address, ip_address, port, model, location):
 		self.cursor.execute(
@@ -122,11 +123,17 @@ class DataBase:
 		self.cursor.execute('''SELECT sname FROM SENSORS WHERE mac_address = ?''', (mac_address,))
 		return self.cursor.fetchall()
 
-	def get_sensor_modes(self, sname):
-		self.cursor.execute('''SELECT DISTINCT type FROM DATA WHERE sname = ?''', (sname,))
+	def get_sensor_model(self, sname):
+		self.cursor.execute('''SELECT model FROM SENSORS WHERE sname = ?''', (sname,))
+		return self.cursor.fetchone()
+
+	def get_sensor_modes(self, model):
+		self.cursor.execute('''SELECT mode FROM SMODES WHERE model = ?''', (model,))
 		return self.cursor.fetchall()
-		# self.cursor.execute('''SELECT mode FROM SMODES WHERE model = ?''', (sname,))
-		# return self.cursor.fetchall()
+
+	def get_sensor_unit(self, model, mode):
+		self.cursor.execute('''SELECT unit FROM SMODES WHERE model = ? AND mode = ?''', (model, mode))
+		return self.cursor.fetchone()
   
 	def get_data(self, mac_address, sname, mode, duration = 4):
 		self.cursor.execute(f'''

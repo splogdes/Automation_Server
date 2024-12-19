@@ -11,9 +11,11 @@ from kivy.uix.slider import Slider
 from kivy.core.window import Window
 from kivy.input.providers.mtdev import MTDMotionEvent
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from functools import partial
 from datetime import datetime
 from json_to_db import DataBase
+
 
 def get_data(device, sname, type, db, duration=4):
     data = db.get_data(device, sname, type, duration)
@@ -115,7 +117,8 @@ class SensorApp(App):
         # Update modes dynamically based on the selected sensor
         def update_modes(_, value):
             if value and value != "Select Sensor":
-                modes = [mode[0] for mode in self.db.get_sensor_modes(value)]
+                model = self.db.get_sensor_model(value)[0]
+                modes = [mode[0] for mode in self.db.get_sensor_modes(model)]
                 mode_spinner.values = modes if modes else ["No Modes Found"]
                 mode_spinner.text = "Select Mode"
 
@@ -167,12 +170,18 @@ class SensorApp(App):
         # Close popup
         popup.dismiss()
 
+        # Get units for the sensor
+        model = self.db.get_sensor_model(sensor)[0]
+        unit = self.db.get_sensor_unit(model, mode)[0]
+
         # Create new graph figure
         plt.style.use('dark_background')
         fig, axs = plt.subplots()
-        axs.set_title(f"{device} ({mode})")
+        axs.set_title(sensor)
         axs.set_xlabel("Time")
-        axs.set_ylabel("Value")
+        axs.set_ylabel(f"{mode} ({unit})")
+        axs.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        fig.autofmt_xdate()
         fig.tight_layout()
         
         # Create a line for the graph

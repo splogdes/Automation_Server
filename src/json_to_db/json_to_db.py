@@ -23,6 +23,8 @@ class json_to_db:
         '''Registers the sensor in the database'''
         if not self.__data_base.is_sensor_registered(data['mac'], data['name']):
             self.__data_base.insert_sensor(data['mac'], data['name'], data['model'])
+            for mode in data['modes']:
+                self.__data_base.insert_sensor_modes(data['model'], mode, data['modes'][mode])
             self.sock.sendto(("registerd sensor:" + data['name']).encode(), addr)
 
     def update_device(self, data, addr):
