@@ -10,6 +10,7 @@ from kivy.clock import Clock
 from kivy.uix.slider import Slider
 from kivy.core.window import Window
 from kivy.input.providers.mtdev import MTDMotionEvent
+from kivy.metrics import dp, sp
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from functools import partial
@@ -216,5 +217,4 @@ class SensorApp(App):
 if __name__ == "__main__":
     Window.fullscreen = True
     Window.show_cursor = False
-    Window.size = (1920, 1080)
     SensorApp().run()
