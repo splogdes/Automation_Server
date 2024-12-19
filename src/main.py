@@ -8,6 +8,8 @@ from kivy.uix.gridlayout import GridLayout
 from kivy_garden.matplotlib import FigureCanvasKivyAgg
 from kivy.clock import Clock
 from kivy.uix.slider import Slider
+from kivy.config import Config
+from kivy.core.window import Window
 from matplotlib.figure import Figure
 from functools import partial
 from datetime import datetime
@@ -174,5 +176,7 @@ class SensorApp(App):
         popup = Popup(title="Error", content=Label(text=message), size_hint=(0.6, 0.4))
         popup.open()
 
-if __name__ == "__main__":        
+if __name__ == "__main__":
+    Config.set('graphics', 'fullscreen', 'auto')
+    Window.fullscreen = True
     SensorApp().run()
