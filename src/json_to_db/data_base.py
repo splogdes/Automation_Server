@@ -28,6 +28,7 @@ class DataBase:
 						model VARCHAR(50),
 						PRIMARY KEY(mac_address, sname),
 						FOREIGN KEY(mac_address) REFERENCES DEVICES(mac_address)
+                        FOREIGN KEY(model) REFERENCES SMODES(model)
 					)''')
 
 
@@ -113,6 +114,20 @@ class DataBase:
 							)
 		self.conn.commit()
   
+	def get_devices(self):
+		self.cursor.execute('''SELECT mac_address FROM DEVICES''')
+		return self.cursor.fetchall()
+
+	def get_sensors(self, mac_address):
+		self.cursor.execute('''SELECT sname FROM SENSORS WHERE mac_address = ?''', (mac_address,))
+		return self.cursor.fetchall()
+
+	def get_sensor_modes(self, sname):
+		self.cursor.execute('''SELECT DISTINCT type FROM DATA WHERE sname = ?''', (sname,))
+		return self.cursor.fetchall()
+		# self.cursor.execute('''SELECT mode FROM SMODES WHERE model = ?''', (sname,))
+		# return self.cursor.fetchall()
+  
 	def get_data(self, mac_address, sname, mode, duration = 4):
 		self.cursor.execute(f'''
 							SELECT value, timestamp
@@ -130,7 +145,7 @@ class DataBase:
 if __name__ == "__main__":
 	db = DataBase()
 	db.insert_sensor_modes('AHT21', ['temperature', 'humidity'])
-	db.insert_sensor_modes('ENS160', ['temperature', 'humidity', 'CO2', 'TVOC', 'air_quality'])
+	db.insert_sensor_modes('ENS160', ['eco2', 'tvoc', 'air_quality'])
 	db.insert_sensor_modes('capacitive', ['moisture'])
 	db.close()
 	print("Database created")

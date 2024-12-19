@@ -54,3 +54,7 @@ class client_handler:
             case _:
                 print("Message Not Recougnised")
                 self.sock.sendto('Message Not Recougnised'.encode(), addr)
+                
+if __name__ == '__main__':
+    udp_server = client_handler()
+    udp_server.run()
