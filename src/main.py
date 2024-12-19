@@ -8,7 +8,6 @@ from kivy.uix.gridlayout import GridLayout
 from kivy_garden.matplotlib import FigureCanvasKivyAgg
 from kivy.clock import Clock
 from kivy.uix.slider import Slider
-from kivy.config import Config
 from kivy.core.window import Window
 from matplotlib.figure import Figure
 from functools import partial
@@ -177,6 +176,5 @@ class SensorApp(App):
         popup.open()
 
 if __name__ == "__main__":
-    Config.set('graphics', 'fullscreen', 'auto')
     Window.fullscreen = True
     SensorApp().run()
