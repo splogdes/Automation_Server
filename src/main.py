@@ -130,9 +130,11 @@ class SensorApp(App):
         sensor_spinner.bind(text=update_modes)
 
         button_layout = BoxLayout(size_hint_y=0.2, spacing=10)
-        add_btn = Button(text="Add")
+        add_btn = Button(text="Add Line")
+        create_btn = Button(text="Create Graph")
         cancel_btn = Button(text="Cancel")
         button_layout.add_widget(add_btn)
+        button_layout.add_widget(create_btn)
         button_layout.add_widget(cancel_btn)
 
         popup_content = BoxLayout(orientation="vertical")
@@ -141,65 +143,87 @@ class SensorApp(App):
 
         popup = Popup(title="Add New Graph", content=popup_content, size_hint=(0.8, 0.6))
 
-        self.add_graph_called = False
+        lines_to_add = []
+
         def on_add_btn_press(_):
-            if not self.add_graph_called:
-                self.add_graph_called = True
-                self.add_graph(
-                    device_spinner.text,
-                    sensor_spinner.text,
-                    mode_spinner.text,
-                    duration_slider.value,
-                    popup,
+            if (
+                device_spinner.text != "Select Device"
+                and sensor_spinner.text != "Select Sensor"
+                and mode_spinner.text != "Select Mode"
+            ):
+                lines_to_add.append(
+                    (device_spinner.text, sensor_spinner.text, mode_spinner.text)
                 )
+                device_spinner.text = "Select Device"
+                sensor_spinner.text = "Select Sensor"
+                mode_spinner.text = "Select Mode"
+            else:
+                self.show_error_popup("Please select valid device, sensor, and mode!")
+
+        def on_create_btn_press(_):
+            if not lines_to_add:
+                self.show_error_popup("Add at least one line to the graph!")
+            else:
+                self.add_graph(lines_to_add, duration_slider.value, popup)
 
         add_btn.bind(on_press=on_add_btn_press)
-
+        create_btn.bind(on_press=on_create_btn_press)
         cancel_btn.bind(on_press=popup.dismiss)
 
         popup.open()
 
-    def add_graph(self, device, sensor, mode, duration, popup):
-        """Add a new graph to the graph container."""
-        if (
-            device == "Select Device"
-            or sensor == "Select Sensor"
-            or mode == "Select Mode"
-        ):
-            self.show_error_popup("Please select valid device, sensor, and mode!")
-            return
-
+    def add_graph(self, lines, duration, popup):
+        """Add a new graph with multiple lines to the graph container."""
         popup.dismiss()
-
-        model = self.db.get_sensor_model(sensor)[0]
-        unit = self.db.get_sensor_unit(model, mode)[0]
 
         plt.style.use('dark_background')
         fig, axs = plt.subplots()
-        axs.set_title(sensor)
         axs.set_xlabel("Time")
-        axs.set_ylabel(f"{mode} ({unit})")
+        
+        units = [self.db.get_sensor_unit(self.db.get_sensor_model(sensor)[0], mode)[0] for _, sensor, mode in lines]
+        Same_units = len(set(units)) == 1
+        if Same_units:
+            axs.set_ylabel(f"{lines[0][2]} ({units[0]})")
+        else:
+            axs.set_ylabel("Value")
+        
         axs.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         axs.xaxis.grid(False)
         axs.yaxis.grid(True, color='grey')
         fig.autofmt_xdate()
         fig.tight_layout()
-        
-        line = axs.plot([], [], label=sensor)
 
+        graph_data = {}
+
+        for device, sensor, mode in lines:
+            model = self.db.get_sensor_model(sensor)[0]
+            unit = self.db.get_sensor_unit(model, mode)[0]
+            if Same_units:
+                label = f"{sensor}"
+            else:
+                label = f"{sensor} - {mode} ({self.db.get_sensor_unit(self.db.get_sensor_model(sensor)[0], mode)[0]})" 
+            line, = axs.plot([], [], label=label)
+            graph_data[label] = {
+                "line": line,
+                "device": device,
+                "sensor": sensor,
+                "mode": mode,
+                "unit": unit,
+            }
+
+        axs.legend()
         self.graph_container.add_widget(FigureCanvasKivyAgg(fig))
 
-        self.update_graph(axs, line, sensor, device, mode, duration, 1)
-        
         Clock.schedule_interval(
-            partial(self.update_graph, axs, line, sensor, device, mode, duration), 1
+            partial(self.update_graph, axs, graph_data, duration), 1
         )
-        
 
-    def update_graph(self, axs, line, sensor, device, mode, duration, _):
-        """Update a graph with new data."""
-        x, y = get_data(device, sensor, mode, self.db, duration)
-        line[0].set_data(x, y)
+    def update_graph(self, axs, graph_data, duration, _):
+        """Update a graph with data for multiple lines."""
+        for label, data in graph_data.items():
+            x, y = get_data(data["device"], data["sensor"], data["mode"], self.db, duration)
+            data["line"].set_data(x, y)
+
         axs.relim()
         axs.autoscale_view()
         axs.figure.canvas.draw()
