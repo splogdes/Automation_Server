@@ -13,8 +13,9 @@ from kivy.input.providers.mtdev import MTDMotionEvent
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from functools import partial
-from datetime import datetime, timedelta
+from datetime import datetime
 from json_to_db import DataBase
+import numpy as np
 
 
 def get_data(device, sname, type, db, duration=4):
@@ -22,8 +23,8 @@ def get_data(device, sname, type, db, duration=4):
     x = [datetime.strptime(x[1], '%Y-%m-%d %H:%M:%S') for x in data]
     y = [x[0] for x in data]
 
-    if len(x) > 3600:
-        bin_size = len(x) // 3600
+    if len(x) > 360:
+        bin_size = len(x) // 360
         downsampled_x = []
         downsampled_y = []
 
@@ -57,16 +58,16 @@ class SensorApp(App):
     
     def on_touch_down(self, instance, touch):
         
-        if type(touch) != MTDMotionEvent:
+        if type(touch) == MTDMotionEvent:
             return False
-        
+                
         if touch.is_double_tap:
             self.double_tap_detected = True
             Clock.unschedule(self.handle_single_tap)
             self.handle_double_tap(instance, touch)
         else:
             self.double_tap_detected = False
-            Clock.schedule_once(lambda dt: self.handle_single_tap(instance, touch), 0.3)
+            Clock.schedule_once(lambda dt: self.handle_single_tap(instance, touch), 0.5)
 
     def handle_single_tap(self, instance, touch):
         if not self.double_tap_detected:
@@ -79,7 +80,7 @@ class SensorApp(App):
 
     def handle_click_popup(self, instance, touch):
         """Handle clicks on the popup."""
-        if type(touch) == MTDMotionEvent:
+        if type(touch) != MTDMotionEvent:
             return False
         return True
 
@@ -130,6 +131,7 @@ class SensorApp(App):
         sensor_spinner.bind(text=update_modes)
 
         button_layout = BoxLayout(size_hint_y=0.2, spacing=10)
+        button_layout.bind(on_touch_down=self.handle_click_popup)
         add_btn = Button(text="Add Line")
         create_btn = Button(text="Create Graph")
         cancel_btn = Button(text="Cancel")
@@ -138,6 +140,7 @@ class SensorApp(App):
         button_layout.add_widget(cancel_btn)
 
         popup_content = BoxLayout(orientation="vertical")
+        popup_content.bind(on_touch_down=self.handle_click_popup)
         popup_content.add_widget(content)
         popup_content.add_widget(button_layout)
 
@@ -200,9 +203,11 @@ class SensorApp(App):
             unit = self.db.get_sensor_unit(model, mode)[0]
             if Same_units:
                 label = f"{sensor}"
+                color = plt.cm.get_cmap("tab20")(np.random.randint(0, 20))
+                line, = axs.plot([], [], label=label, color=color)
             else:
                 label = f"{sensor} - {mode} ({self.db.get_sensor_unit(self.db.get_sensor_model(sensor)[0], mode)[0]})" 
-            line, = axs.plot([], [], label=label)
+                line, = axs.plot([], [], label=label)
             graph_data[label] = {
                 "line": line,
                 "device": device,
