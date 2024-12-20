@@ -76,7 +76,13 @@ class SensorApp(App):
     def handle_double_tap(self, instance, touch):
         for widget in self.graph_container.children:
             if widget.collide_point(*touch.pos):
+                if isinstance(widget, FigureCanvasKivyAgg):
+                    widget.figure.clf()
+                    plt.close(widget.figure)
+                if hasattr(widget, 'update_callback'):
+                    Clock.unschedule(widget.update_callback)
                 self.graph_container.remove_widget(widget)
+                break
 
     def handle_click_popup(self, instance, touch):
         """Handle clicks on the popup."""
@@ -203,11 +209,15 @@ class SensorApp(App):
             unit = self.db.get_sensor_unit(model, mode)[0]
             if Same_units:
                 label = f"{sensor}"
+            else:
+                label = f"{sensor} - {mode} ({self.db.get_sensor_unit(self.db.get_sensor_model(sensor)[0], mode)[0]})" 
+                
+            if len(lines) == 1:
                 color = plt.cm.get_cmap("tab20")(np.random.randint(0, 20))
                 line, = axs.plot([], [], label=label, color=color)
             else:
-                label = f"{sensor} - {mode} ({self.db.get_sensor_unit(self.db.get_sensor_model(sensor)[0], mode)[0]})" 
                 line, = axs.plot([], [], label=label)
+                
             graph_data[label] = {
                 "line": line,
                 "device": device,
@@ -217,11 +227,15 @@ class SensorApp(App):
             }
 
         axs.legend()
-        self.graph_container.add_widget(FigureCanvasKivyAgg(fig))
+        widget = FigureCanvasKivyAgg(fig)
 
-        Clock.schedule_interval(
-            partial(self.update_graph, axs, graph_data, duration), 1
-        )
+        update_callback = partial(self.update_graph, axs, graph_data, duration)
+        Clock.schedule_interval(update_callback, 1)
+        widget.update_callback = update_callback
+        
+        self.graph_container.add_widget(widget)
+        
+        self.update_graph(axs, graph_data, duration, None)
 
     def update_graph(self, axs, graph_data, duration, _):
         """Update a graph with data for multiple lines."""
