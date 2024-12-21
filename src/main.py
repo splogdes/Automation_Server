@@ -23,22 +23,6 @@ def get_data(device, sname, type, db, duration=4):
     x = [datetime.strptime(x[1], '%Y-%m-%d %H:%M:%S') for x in data]
     y = [x[0] for x in data]
 
-    if len(x) > 360:
-        bin_size = len(x) // 360
-        downsampled_x = []
-        downsampled_y = []
-
-        for i in range(0, len(x), bin_size):
-            bin_x = x[i:i + bin_size]
-            bin_y = y[i:i + bin_size]
-            if bin_x:
-                avg_time = bin_x[0] + (bin_x[-1] - bin_x[0]) / 2
-                avg_y = sum(bin_y) / len(bin_y)
-                downsampled_x.append(avg_time)
-                downsampled_y.append(avg_y)
-
-        x, y = downsampled_x, downsampled_y
-
     return x, y
 
 class SensorApp(App):

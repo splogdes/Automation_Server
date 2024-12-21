@@ -137,12 +137,38 @@ class DataBase:
   
 	def get_data(self, mac_address, sname, mode, duration = 4):
 		self.cursor.execute(f'''
-							SELECT value, timestamp
-                            FROM DATA NATURAL JOIN MESSAGES
-       						WHERE mac_address = ? AND sname = ? AND type = ? AND timestamp > datetime('now', '-{duration} hours')
-                            ORDER BY timestamp''',
-                            (mac_address, sname, mode)
-							)
+			WITH raw_data AS (
+				SELECT 
+					value AS y,
+					DATETIME(timestamp) AS x
+				FROM DATA NATURAL JOIN MESSAGES
+				WHERE mac_address = ? AND sname = ? AND type = ?
+				  AND timestamp >= datetime('now', '-{duration} hours')
+			),
+			numbered_data AS (
+				SELECT 
+					*,
+					ROW_NUMBER() OVER (ORDER BY x) AS row_num
+				FROM raw_data
+			),
+			binned_data AS (
+				SELECT
+					*,
+					(row_num - 1) / (SELECT COUNT(*) / 360 FROM raw_data) AS bin_id
+				FROM numbered_data
+			),
+			downsampled_data AS (
+				SELECT 
+					DATETIME(AVG(JULIANDAY(x))) AS avg_time,
+					AVG(y) AS avg_value
+				FROM binned_data
+				GROUP BY bin_id
+			)
+			SELECT 
+				avg_time, avg_value
+			FROM downsampled_data
+			ORDER BY avg_time;
+		''', (mac_address, sname, mode))
 		return self.cursor.fetchall()
 
 	def close(self):
@@ -155,4 +181,3 @@ if __name__ == "__main__":
 	db.insert_sensor_modes('ENS160', ['eco2', 'tvoc', 'air_quality'])
 	db.insert_sensor_modes('capacitive', ['moisture'])
 	db.close()
-	print("Database created")
