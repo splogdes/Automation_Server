@@ -20,8 +20,8 @@ import numpy as np
 
 def get_data(device, sname, type, db, duration=4):
     data = db.get_data(device, sname, type, duration)
-    x = [datetime.strptime(x[1], '%Y-%m-%d %H:%M:%S') for x in data]
-    y = [x[0] for x in data]
+    x = [datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S') for x in data]
+    y = [x[1] for x in data]
 
     return x, y
 
